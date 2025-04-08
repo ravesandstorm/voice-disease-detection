@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Disease Detection</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4a90e2;
+            --secondary: #50c878;
+            --dark: #333;
+            --light: #f9f9f9;
+            --danger: #e74c3c;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --border-radius: 8px;
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary), #2d6ca2);
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+            border-radius: var(--border-radius);
+            margin-bottom: 30px;
+            box-shadow: var(--box-shadow);
+        }
+
+        header h1 {
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+
+        .stats-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 15px;
+            font-size: 1.2rem;
+        }
+
+        .stat-card {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: var(--border-radius);
+            margin: 0 10px;
+            min-width: 120px;
+        }
+
+        .top-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .top-stats {
+            display: flex;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+        }
+
+        .top-stats .stat-item {
+            margin-right: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .top-stats .stat-item i {
+            margin-right: 8px;
+            color: var(--primary);
+        }
+
+        .top-stats .stat-label {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+
+        .top-stats .stat-value {
+            font-weight: normal;
+        }
+
+        .top-stats .stat-value.correct {
+            color: var(--success);
+        }
+
+        .top-stats .stat-value.incorrect {
+            color: var(--danger);
+        }
+
+        .content-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .panel {
+            flex: 1;
+            min-width: 300px;
+            background-color: white;
+            border-radius: var(--border-radius);
+            padding: 25px;
+            box-shadow: var(--box-shadow);
+            transition: var(--transition);
+        }
+
+        .panel h2 {
+            margin-bottom: 20px;
+            color: var(--dark);
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .panel h2 i {
+            margin-right: 10px;
+            color: var(--primary);
+        }
+
+        .record-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .record-button {
+            margin-top: 20px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            font-size: 24px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .record-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .record-button.recording {
+            background-color: var(--danger);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .timer {
+            margin-top: 15px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--dark);
+        }
+
+        .result-container {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .prediction-result {
+            margin-top: 15px;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .prediction-result.healthy {
+            color: var(--success);
+        }
+
+        .prediction-result.neurological, .prediction-result.respiratory {
+            color: var(--danger);
+        }
+
+        .spectrogram-container {
+            margin-top: 20px;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            max-width: 100%;
+        }
+
+        .spectrogram-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            padding: 10px 20px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .button i {
+            margin-right: 8px;
+        }
+
+        .button:hover {
+            background-color: #3a7bd5;
+            transform: translateY(-2px);
+        }
+
+        .button.randomize {
+            background-color: var(--secondary);
+        }
+
+        .button.randomize:hover {
+            background-color: #41a866;
+        }
+
+        /* Samples section with horizontal layout */
+        .samples-section {
+            margin-top: 30px;
+        }
+
+        .samples-section h2 {
+            margin-bottom: 20px;
+            color: var(--dark);
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .samples-section h2 i {
+            margin-right: 10px;
+            color: var(--primary);
+        }
+
+        .samples-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: space-between;
+        }
+
+        .sample-card {
+            flex: 1;
+            min-width: 300px;
+            max-width: calc(33.333% - 14px);
+            background-color: white;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            box-shadow: var(--box-shadow);
+            transition: var(--transition);
+        }
+
+        .sample-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .sample-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .sample-title {
+            font-weight: bold;
+            color: var(--dark);
+            font-size: 1.1rem;
+        }
+
+        .sample-prediction {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .sample-prediction-label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .sample-prediction-value {
+            font-weight: bold;
+        }
+
+        .sample-prediction-value.correct {
+            color: var(--success);
+        }
+
+        .sample-prediction-value.incorrect {
+            color: var(--danger);
+        }
+
+        .sample-spectrogram {
+            margin-bottom: 15px;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+        }
+
+        .sample-spectrogram img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .sample-audio {
+            width: 100%;
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100px;
+        }
+
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid var(--primary);
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .error-message {
+            color: var(--danger);
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .content-container {
+                flex-direction: column;
+            }
+            
+            .panel {
+                margin-bottom: 20px;
+            }
+            
+            .stat-card {
+                margin: 5px;
+                padding: 5px 10px;
+                font-size: 1rem;
+            }
+            
+            .top-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .top-stats {
+                margin-bottom: 15px;
+                flex-wrap: wrap;
+            }
+            
+            .sample-card {
+                max-width: 100%;
+            }
+        }
+        
+        #api-status {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            color: white;
+        }
+        
+        #api-status.connected {
+            background-color: var(--success);
+        }
+        
+        #api-status.disconnected {
+            background-color: var(--danger);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-microphone-alt"></i> Voice Disease Detection</h1>
+            <p>Minor Project - Analyze voice for health conditions</p>
+            <div class="stats-container">
+                <div class="stat-card">
+                    <div>Accuracy</div>
+                    <div id="accuracy-counter">0%</div>
+                </div>
+                <div class="stat-card">
+                    <div>Tests</div>
+                    <div id="tests-counter">0</div>
+                </div>
+                <div class="stat-card">
+                    <div>Correct</div>
+                    <div id="correct-counter">0</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Top Controls - Prediction Stats and Randomize Button -->
+        <div class="top-controls">
+            <div class="top-stats">
+                <div class="stat-item">
+                    <i class="fas fa-chart-bar"></i>
+                    <span class="stat-label">Last Predictions:</span>
+                    <span id="last-predictions" class="stat-value">None yet</span>
+                </div>
+            </div>
+            <button id="randomize-button" class="button randomize">
+                <i class="fas fa-random"></i> Randomize Samples
+            </button>
+        </div>
+
+        <div class="content-container">
+            <!-- Left Panel: Record Voice -->
+            <div class="panel">
+                <h2><i class="fas fa-microphone"></i> Record Your Voice</h2>
+                <div class="record-panel">
+                    <p>Press the button to record a 6-second voice sample</p>
+                    <button id="record-button" class="record-button">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                    <div id="timer" class="timer hidden">00:00</div>
+                    <div id="record-error" class="error-message hidden"></div>
+                </div>
+                
+                <div id="result-container" class="result-container hidden">
+                    <h3>Your Voice Analysis</h3>
+                    <div id="prediction-result" class="prediction-result"></div>
+                    <div id="confidence-result"></div>
+                    <div id="spectrogram-container" class="spectrogram-container">
+                        <img id="spectrogram-image" src="" alt="Spectrogram">
+                    </div>
+                    <div id="audio-playback" class="hidden">
+                        <audio id="recorded-audio" controls></audio>
+                    </div>
+                </div>
+                
+                <div id="loading-record" class="loading hidden">
+                    <div class="loading-spinner"></div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Model Information -->
+            <div class="panel">
+                <h2><i class="fas fa-info-circle"></i> Model Information</h2>
+                <p><strong>Model:</strong> CNN-based voice disease classifier</p>
+                <p><strong>Expected Accuracy:</strong> 92% on test set</p>
+                <p><strong>Current Accuracy:</strong> <span id="current-accuracy">0%</span></p>
+                <p><strong>Classes:</strong></p>
+                <ul>
+                    <li><span style="color: var(--success);">Normal</span> - Healthy voice samples</li>
+                    <li><span style="color: var(--danger);">Lazyngozele</span> - Voice samples showing symptoms laryngozele disease</li>
+                    <li><span style="color: var(--danger);">Vox Senilis</span> - Voice samples showing symptoms of old age</li>
+                </ul>
+                <p><strong>Instructions:</strong></p>
+                <ul>
+                    <li>Record your voice or play sample recordings</li>
+                    <li>View spectrograms and predictions</li>
+                    <li>Compare actual vs. predicted classifications</li>
+                </ul>
+                <p><small>Note: This model is intended for educational purposes only and not for medical diagnosis.</small></p>
+            </div>
+        </div>
+
+        <!-- Samples Section with Horizontal Layout -->
+        <div class="samples-section">
+            <h2><i class="fas fa-random"></i> Test Set Samples</h2>
+            <div id="samples-error" class="error-message hidden"></div>
+            <div id="loading-samples" class="loading hidden">
+                <div class="loading-spinner"></div>
+            </div>
+            <div id="samples-grid" class="samples-grid"></div>
+        </div>
+    </div>
+    
+    <div id="api-status" class="disconnected">API: Disconnected</div>
+
+    <script>
+        // Global variables
+        let mediaRecorder;
+        let audioChunks = [];
+        let recordingTimer;
+        let recordingDuration = 6; // 6 seconds
+        let currentTime = 0;
+        
+        // Stats counters
+        let totalTests = 0;
+        let correctPredictions = 0;
+        let lastPredictions = [];
+        
+        // API endpoint
+        const API_URL = 'http://localhost:8000';
+        
+        // DOM Elements
+        const recordButton = document.getElementById('record-button');
+        const timerDisplay = document.getElementById('timer');
+        const resultContainer = document.getElementById('result-container');
+        const predictionResult = document.getElementById('prediction-result');
+        const confidenceResult = document.getElementById('confidence-result');
+        const spectrogramImage = document.getElementById('spectrogram-image');
+        const samplesGrid = document.getElementById('samples-grid');
+        const randomizeButton = document.getElementById('randomize-button');
+        const loadingRecord = document.getElementById('loading-record');
+        const loadingSamples = document.getElementById('loading-samples');
+        const recordError = document.getElementById('record-error');
+        const samplesError = document.getElementById('samples-error');
+        const recordedAudio = document.getElementById('recorded-audio');
+        const audioPlayback = document.getElementById('audio-playback');
+        const apiStatus = document.getElementById('api-status');
+        const lastPredictionsDisplay = document.getElementById('last-predictions');
+        
+        // Stats counters DOM elements
+        const accuracyCounter = document.getElementById('accuracy-counter');
+        const testsCounter = document.getElementById('tests-counter');
+        const correctCounter = document.getElementById('correct-counter');
+        const currentAccuracy = document.getElementById('current-accuracy');
+        
+        // Check API status
+        function checkApiStatus() {
+            fetch(`${API_URL}/`)
+                .then(response => {
+                    if (response.ok) {
+                        apiStatus.textContent = 'API: Connected';
+                        apiStatus.className = 'connected';
+                    } else {
+                        apiStatus.textContent = 'API: Error';
+                        apiStatus.className = 'disconnected';
+                    }
+                })
+                .catch(() => {
+                    apiStatus.textContent = 'API: Disconnected';
+                    apiStatus.className = 'disconnected';
+                });
+        }
+        
+        // Update stats function
+        function updateStats() {
+            const accuracy = totalTests > 0 ? Math.round((correctPredictions / totalTests) * 100) : 0;
+            accuracyCounter.textContent = `${accuracy}%`;
+            currentAccuracy.textContent = `${accuracy}%`;
+            testsCounter.textContent = totalTests;
+            correctCounter.textContent = correctPredictions;
+            
+            // Update last predictions display
+            if (lastPredictions.length > 0) {
+                const predictionText = lastPredictions.map(p => {
+                    const resultClass = p.correct ? 'correct' : 'incorrect';
+                    return `<span class="${resultClass}">${p.prediction}</span>`;
+                }).join(', ');
+                lastPredictionsDisplay.innerHTML = predictionText;
+            } else {
+                lastPredictionsDisplay.textContent = 'None yet';
+            }
+        }
+        
+        // Format time function
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const secs = Math.floor(seconds % 60).toString().padStart(2, '0');
+            return `${mins}:${secs}`;
+        }
+        
+        // Start recording function
+        function startRecording() {
+            audioChunks = [];
+            recordButton.classList.add('recording');
+            recordButton.innerHTML = '<i class="fas fa-stop"></i>';
+            recordError.classList.add('hidden');
+            resultContainer.classList.add('hidden');
+            
+            // Reset timer
+            currentTime = 0;
+            timerDisplay.textContent = formatTime(recordingDuration - currentTime);
+            timerDisplay.classList.remove('hidden');
+            
+            // Start timer
+            recordingTimer = setInterval(() => {
+                currentTime += 1;
+                timerDisplay.textContent = formatTime(recordingDuration - currentTime);
+                
+                if (currentTime >= recordingDuration) {
+                    stopRecording();
+                }
+            }, 1000);
+            
+            // Request audio with specific constraints
+            navigator.mediaDevices.getUserMedia({ 
+                audio: {
+                    channelCount: 1,
+                    sampleRate: 44100
+                } 
+            })
+            .then(stream => {
+                // Use audio/wav MIME type if supported
+                let options = {};
+                if (MediaRecorder.isTypeSupported('audio/wav')) {
+                    options = { mimeType: 'audio/wav' };
+                } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+                    options = { mimeType: 'audio/webm' };
+                }
+                
+                mediaRecorder = new MediaRecorder(stream, options);
+                
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = () => {
+                    // Get the MIME type that was actually used
+                    const mimeType = mediaRecorder.mimeType;
+                    const fileExt = mimeType.includes('wav') ? 'wav' : 'webm';
+                    
+                    const audioBlob = new Blob(audioChunks, { type: mimeType });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    
+                    // Show audio playback
+                    recordedAudio.src = audioUrl;
+                    audioPlayback.classList.remove('hidden');
+                    
+                    // Process the recorded audio
+                    processAudio(audioBlob, fileExt);
+                };
+                
+                // Request data every 1 second
+                mediaRecorder.start(1000);
+            })
+            .catch(error => {
+                console.error('Error accessing microphone:', error);
+                recordError.textContent = 'Error accessing microphone. Please check permissions.';
+                recordError.classList.remove('hidden');
+                resetRecordingState();
+            });
+        }
+
+        // Process audio function
+        function processAudio(audioBlob, fileExt) {
+            console.log("Processing audio blob:", audioBlob.type, "size:", audioBlob.size);
+            
+            const formData = new FormData();
+            formData.append('file', audioBlob, `recording.${fileExt}`);
+            
+            fetch(`${API_URL}/predict/`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(`HTTP error! Status: ${response.status}, Details: ${text}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                resultContainer.classList.remove('hidden');
+                loadingRecord.classList.add('hidden');
+                
+                predictionResult.textContent = `Prediction: ${data.prediction}`;
+                predictionResult.className = 'prediction-result';
+                predictionResult.classList.add(data.prediction.toLowerCase());
+                
+                confidenceResult.textContent = `Confidence: ${(data.confidence * 100).toFixed(2)}%`;
+                
+                spectrogramImage.src = `data:image/png;base64,${data.spectrogram}`;
+                
+                resultContainer.classList.add('fade-in');
+                
+                addPrediction({
+                    prediction: data.prediction,
+                    confidence: data.confidence,
+                    correct: null
+                });
+            })
+            .catch(error => {
+                console.error('Error processing audio:', error);
+                loadingRecord.classList.add('hidden');
+                recordError.classList.remove('hidden');
+            });
+        }
+        
+        // Stop recording function
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                
+                // Stop all audio tracks
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                
+                clearInterval(recordingTimer);
+                resetRecordingState();
+                loadingRecord.classList.remove('hidden');
+            }
+        }
+        
+        // Reset recording state
+        function resetRecordingState() {
+            recordButton.classList.remove('recording');
+            recordButton.innerHTML = '<i class="fas fa-microphone"></i>';
+            timerDisplay.classList.add('hidden');
+        }
+        
+        // Add prediction to last predictions array
+        function addPrediction(prediction) {
+            lastPredictions.unshift(prediction); // Add to beginning
+            if (lastPredictions.length > 5) {
+                lastPredictions.pop(); // Keep only 5 most recent
+            }
+            updateStats();
+        }
+        
+        // Load random samples function
+        function loadRandomSamples() {
+            samplesGrid.innerHTML = '';
+            loadingSamples.classList.remove('hidden');
+            samplesError.classList.add('hidden');
+            
+            fetch(`${API_URL}/random-samples/`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(samples => {
+                loadingSamples.classList.add('hidden');
+                
+                if (samples.length === 0) {
+                    samplesError.textContent = 'No samples found in the dataset.';
+                    samplesError.classList.remove('hidden');
+                    return;
+                }
+                
+                // Display samples
+                samples.forEach((sample, index) => {
+                    const isCorrect = sample.true_class === sample.prediction;
+                    
+                    // Update stats
+                    totalTests++;
+                    if (isCorrect) {
+                        correctPredictions++;
+                    }
+                    
+                    // Add to last predictions
+                    addPrediction({
+                        prediction: sample.prediction,
+                        confidence: sample.confidence,
+                        correct: isCorrect
+                    });
+                    
+                    const sampleCard = document.createElement('div');
+                    sampleCard.className = 'sample-card fade-in';
+                    
+                    sampleCard.innerHTML = `
+                        <div class="sample-header">
+                            <div class="sample-title">Sample ${index + 1}</div>
+                            <div class="sample-prediction">
+                                <span class="sample-prediction-label">True: ${sample.true_class}</span>
+                                <span class="sample-prediction-value ${isCorrect ? 'correct' : 'incorrect'}">
+                                    Predicted: ${sample.prediction} (${(sample.confidence * 100).toFixed(2)}%)
+                                </span>
+                            </div>
+                        </div>
+                        <div class="sample-spectrogram">
+                            <img src="data:image/png;base64,${sample.spectrogram}" alt="Spectrogram">
+                        </div>
+                        <audio class="sample-audio" controls>
+                            <source src="data:audio/wav;base64,${sample.audio_base64}" type="audio/wav">
+                        </audio>
+                    `;
+                    
+                    samplesGrid.appendChild(sampleCard);
+                });
+                
+                // Update stats UI
+                updateStats();
+            })
+            .catch(error => {
+                console.error('Error loading samples:', error);
+                loadingSamples.classList.add('hidden');
+                samplesError.textContent = `Error loading samples: ${error.message}. Please try again.`;
+                samplesError.classList.remove('hidden');
+            });
+        }
+        
+        // Event listeners
+        recordButton.addEventListener('click', () => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        });
+        
+        randomizeButton.addEventListener('click', loadRandomSamples);
+        
+        // Initial load
+        document.addEventListener('DOMContentLoaded', () => {
+            checkApiStatus();
+            setInterval(checkApiStatus, 5000); // Check API status every 5 seconds
+            updateStats();
+            // Try to load random samples
+            loadRandomSamples();
+        });
+    </script>
+</body>
+</html>
