@@ -1,9 +1,9 @@
-tensorflow
-fastapi
-uvicorn
+tensorflow==2.16.1
+fastapi==0.112.3
+uvicorn==0.30.6
 numpy
-librosa
-matplotlib
-python-multipart
-pydantic
+librosa==0.11.0
+matplotlib==3.8.4
+python-multipart==0.0.20
+pydantic==2.8.2
 scipy
