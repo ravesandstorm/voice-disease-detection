@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voice Disease Detection</title>
+    <script src="https://cdn.webrtc-experiment.com/RecordRTC.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <style>
         :root {
@@ -540,6 +541,9 @@
         let recordingTimer;
         let recordingDuration = 6; // 6 seconds
         let currentTime = 0;
+        let recorder;
+        let audioContext;
+        let stream;
         
         // Stats counters
         let totalTests = 0;
@@ -618,85 +622,93 @@
             return `${mins}:${secs}`;
         }
         
-        // Start recording function
-        function startRecording() {
-            audioChunks = [];
-            recordButton.classList.add('recording');
-            recordButton.innerHTML = '<i class="fas fa-stop"></i>';
-            recordError.classList.add('hidden');
-            resultContainer.classList.add('hidden');
-            
-            // Reset timer
-            currentTime = 0;
-            timerDisplay.textContent = formatTime(recordingDuration - currentTime);
-            timerDisplay.classList.remove('hidden');
-            
-            // Start timer
-            recordingTimer = setInterval(() => {
-                currentTime += 1;
-                timerDisplay.textContent = formatTime(recordingDuration - currentTime);
-                
-                if (currentTime >= recordingDuration) {
-                    stopRecording();
-                }
-            }, 1000);
-            
-            // Request audio with specific constraints
-            navigator.mediaDevices.getUserMedia({ 
-                audio: {
-                    channelCount: 1,
-                    sampleRate: 44100
-                } 
-            })
-            .then(stream => {
-                // Use audio/wav MIME type if supported
-                let options = {};
-                if (MediaRecorder.isTypeSupported('audio/wav')) {
-                    options = { mimeType: 'audio/wav' };
-                } else if (MediaRecorder.isTypeSupported('audio/webm')) {
-                    options = { mimeType: 'audio/webm' };
-                }
-                
-                mediaRecorder = new MediaRecorder(stream, options);
-                
-                mediaRecorder.ondataavailable = event => {
-                    audioChunks.push(event.data);
-                };
-                
-                mediaRecorder.onstop = () => {
-                    // Get the MIME type that was actually used
-                    const mimeType = mediaRecorder.mimeType;
-                    const fileExt = mimeType.includes('wav') ? 'wav' : 'webm';
-                    
-                    const audioBlob = new Blob(audioChunks, { type: mimeType });
-                    const audioUrl = URL.createObjectURL(audioBlob);
-                    
-                    // Show audio playback
-                    recordedAudio.src = audioUrl;
-                    audioPlayback.classList.remove('hidden');
-                    
-                    // Process the recorded audio
-                    processAudio(audioBlob, fileExt);
-                };
-                
-                // Request data every 1 second
-                mediaRecorder.start(1000);
-            })
-            .catch(error => {
-                console.error('Error accessing microphone:', error);
-                recordError.textContent = 'Error accessing microphone. Please check permissions.';
-                recordError.classList.remove('hidden');
-                resetRecordingState();
-            });
-        }
+        // import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg';
+        // const { createFFmpeg, fetchFile } = FFmpeg;
+        // const ffmpeg = createFFmpeg({ log: true });
 
-        // Process audio function
-        function processAudio(audioBlob, fileExt) {
-            console.log("Processing audio blob:", audioBlob.type, "size:", audioBlob.size);
-            
+let timerInterval;
+let stopTimeout;
+let isRecording = false;
+
+function startRecording() {
+    recordButton.classList.add('recording');
+    recordButton.innerHTML = '<i class="fas fa-stop"></i>';
+    recordError.classList.add('hidden');
+    resultContainer.classList.add('hidden');
+
+    currentTime = 0;
+    timerDisplay.textContent = formatTime(recordingDuration - currentTime);
+    timerDisplay.classList.remove('hidden');
+
+    isRecording = true;
+
+    timerInterval = setInterval(() => {
+        currentTime += 1;
+        timerDisplay.textContent = formatTime(recordingDuration - currentTime);
+    }, 1000);
+
+    stopTimeout = setTimeout(() => {
+        stopRecording(); // <-- will only trigger once now
+    }, recordingDuration * 1000);
+
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
+        stream = s;
+
+        recorder = RecordRTC(stream, {
+            type: 'audio',
+            mimeType: 'audio/wav',
+            recorderType: RecordRTC.StereoAudioRecorder,
+            numberOfAudioChannels: 1,
+            desiredSampRate: 44100,
+            sampleRate: 44100
+        });
+
+        recorder.startRecording();
+        console.log("Recording started with RecordRTC");
+    }).catch(err => {
+        console.error("Microphone error:", err);
+        recordError.textContent = 'Error accessing microphone. Please check permissions.';
+        recordError.classList.remove('hidden');
+        resetRecordingState();
+    });
+}
+
+function stopRecording() {
+    if (!isRecording) return; // ❌ Already stopped
+
+    isRecording = false; // ✅ Now locked
+
+    clearInterval(timerInterval);
+    clearTimeout(stopTimeout);
+    resetRecordingState();
+    loadingRecord.classList.remove('hidden');
+
+    if (recorder) {
+        recorder.stopRecording(() => {
+            console.log("Stopped recording");
+
+            const audioBlob = recorder.getBlob();
+            const audioUrl = URL.createObjectURL(audioBlob);
+
+            recordedAudio.src = audioUrl;
+            audioPlayback.classList.remove('hidden');
+
+            processAudio(audioBlob);
+
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        });
+    }
+}
+
+
+        // Process audio function (unchanged from your version)
+        function processAudio(blob) {
+            console.log("Sending WAV to backend");
             const formData = new FormData();
-            formData.append('file', audioBlob, `recording.${fileExt}`);
-            
+            formData.append('file', blob, 'recording.wav');
+
             fetch(`${API_URL}/predict/`, {
                 method: 'POST',
                 body: formData
@@ -712,17 +724,15 @@
             .then(data => {
                 resultContainer.classList.remove('hidden');
                 loadingRecord.classList.add('hidden');
-                
+
                 predictionResult.textContent = `Prediction: ${data.prediction}`;
                 predictionResult.className = 'prediction-result';
                 predictionResult.classList.add(data.prediction.toLowerCase());
-                
+
                 confidenceResult.textContent = `Confidence: ${(data.confidence * 100).toFixed(2)}%`;
-                
                 spectrogramImage.src = `data:image/png;base64,${data.spectrogram}`;
-                
                 resultContainer.classList.add('fade-in');
-                
+
                 addPrediction({
                     prediction: data.prediction,
                     confidence: data.confidence,
@@ -734,20 +744,6 @@
                 loadingRecord.classList.add('hidden');
                 recordError.classList.remove('hidden');
             });
-        }
-        
-        // Stop recording function
-        function stopRecording() {
-            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                mediaRecorder.stop();
-                
-                // Stop all audio tracks
-                mediaRecorder.stream.getTracks().forEach(track => track.stop());
-                
-                clearInterval(recordingTimer);
-                resetRecordingState();
-                loadingRecord.classList.remove('hidden');
-            }
         }
         
         // Reset recording state
@@ -842,7 +838,7 @@
         
         // Event listeners
         recordButton.addEventListener('click', () => {
-            if (mediaRecorder && mediaRecorder.state === 'recording') {
+            if (isRecording) {
                 stopRecording();
             } else {
                 startRecording();

@@ -1,6 +1,6 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import Response, FileResponse
 import tensorflow as tf
 import numpy as np
 import librosa
@@ -13,7 +13,6 @@ from pydantic import BaseModel
 import uvicorn
 
 # pip install fastapi uvicorn librosa tensorflow matplotlib pydantic numpy
-# install ffmpeg
 # python -m uvicorn main:app
 
 app = FastAPI(title="Voice Disease Detection API")
@@ -27,10 +26,9 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-# Load the pre-trained model
+# Loading the pre-trained model
 model = tf.keras.models.load_model('92cnn.keras')
 
-# Define class names (modify these based on your actual classes)
 start_folder = 'patient-vocal-dataset'
 class_names = os.listdir(start_folder)
 
@@ -124,30 +122,15 @@ async def predict_audio(file: UploadFile = File(...)):
         import tempfile
         import os
         import subprocess
-        import shutil
         
-        # Create temporary files for input and output
+        # Create temporary file for input
         with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as input_file:
             input_path = input_file.name
             input_file.write(audio_bytes)
         
-        # Create output file path with .wav extension
-        output_path = os.path.splitext(input_path)[0] + "_converted.wav"
-        
         try:
-            # Use FFmpeg to convert to WAV format that librosa can handle
-            ffmpeg_path = shutil.which("ffmpeg")
-            if not ffmpeg_path:
-                ffmpeg_path = r"C:\ffmpeg\bin\ffmpeg.exe"  # Fallback to known location
-
-            subprocess.run(
-                [ffmpeg_path, "-i", input_path, "-ar", "44100", "-ac", "1", output_path], 
-                check=True, 
-                capture_output=True
-            )
-            
-            # Now load with librosa from the converted file
-            audio_data, sample_rate = librosa.load(output_path, sr=None)
+             # Now load with librosa from the converted file
+            audio_data, sample_rate = librosa.load(input_path, sr=None)
             
             # Continue with existing processing
             img_array = audio_to_spectrogram_array(audio_data, sample_rate)
@@ -172,11 +155,9 @@ async def predict_audio(file: UploadFile = File(...)):
             }
             
         finally:
-            # Clean up temporary files
+            # Clean up temporary file
             if os.path.exists(input_path):
                 os.unlink(input_path)
-            if os.path.exists(output_path):
-                os.unlink(output_path)
                 
     except subprocess.CalledProcessError as e:
         raise HTTPException(status_code=500, detail=f"FFmpeg conversion error: {e.stderr.decode()}")
@@ -252,8 +233,8 @@ async def get_random_samples():
     return samples
 
 @app.get("/")
-async def root():
-    return {"message": "Voice Disease Detection API is running"}
+async def get_index():
+    return FileResponse("index.html")
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
