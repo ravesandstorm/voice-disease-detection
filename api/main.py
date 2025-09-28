@@ -19,6 +19,7 @@ app.add_middleware(
 
 
 @app.post("/predict/")
+@app.post("/predict")
 async def predict_audio(file: UploadFile = File(...)):
     try:
         return await service.predict_audio(file)
@@ -27,6 +28,7 @@ async def predict_audio(file: UploadFile = File(...)):
 
 
 @app.get("/random-samples/")
+@app.get("/random-samples")
 async def get_random_samples():
     try:
         return service.get_random_samples()
