@@ -551,7 +551,19 @@
         let lastPredictions = [];
         
         // API endpoint
-        const API_URL = 'http://localhost:8000';
+        var API_URL = 'https://voice-disease-detection.onrender.com';
+        // check api endpoint if active, fallback to localhost
+        fetch(API_URL)
+            .then(response => {
+                if (response.ok) {
+                    API_URL = 'https://voice-disease-detection.onrender.com';
+                } else {
+                    API_URL = 'http://localhost:8000';
+                }
+            })
+            .catch(() => {
+                API_URL = 'http://localhost:8000';
+            });
         
         // DOM Elements
         const recordButton = document.getElementById('record-button');
