@@ -16,7 +16,7 @@ model = tf.keras.models.load_model('92cnn.keras')
 
 # Dataset
 start_folder = 'patient-vocal-dataset'
-class_names = os.listdir(start_folder)
+class_names = [i for i in os.listdir(start_folder) if not i.startswith('.')]
 test_folder = start_folder
 
 if not os.path.exists(test_folder):

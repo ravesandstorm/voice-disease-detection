@@ -1,8 +1,9 @@
 tensorflow==2.20.0
 fastapi==0.112.3
+python-multipart==0.0.20
+# multipart is required dependency for fastapi
 uvicorn==0.30.6
 numpy==2.3.3
 librosa==0.11.0
 matplotlib==3.9.4 
 # matplotlib 3.10 changes plt.figure.canvas.tostring_rgb to argb, code breaking
-python-multipart==0.0.20
